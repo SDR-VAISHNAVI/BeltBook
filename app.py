@@ -49,7 +49,11 @@ def notify_absent_students(absent_students, att_date):
             json=payload,
             timeout=10
         )
-        print(f"WhatsApp service response: {response.status_code} - {response.json()}")
+        try:
+            body = response.json()
+        except Exception:
+            body = response.text[:200]
+        print(f"WhatsApp service response: {response.status_code} - {body}")
     except Exception as e:
         print(f"WhatsApp service error: {e}")
 
@@ -78,8 +82,18 @@ def send_absence_notifications():
             json=payload,
             timeout=30
         )
-        result = resp.json()
+        try:
+            result = resp.json()
+        except Exception:
+            return jsonify({
+                "success": False,
+                "error": f"WhatsApp service returned non-JSON (status {resp.status_code}). It may be sleeping — try again in 30 seconds. Raw: {resp.text[:200]}"
+            }), 502
         return jsonify(result), resp.status_code
+    except http_requests.exceptions.ConnectionError:
+        return jsonify({"success": False, "error": "Could not reach WhatsApp service — is it running on Render?"}), 503
+    except http_requests.exceptions.Timeout:
+        return jsonify({"success": False, "error": "WhatsApp service timed out after 30s"}), 504
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
