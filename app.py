@@ -11,7 +11,7 @@ app = Flask(__name__)
 CORS(app)
 
 DATABASE_URL = "postgresql://postgres.losiamfhydgdsojghcui:VaishnaviGiri@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
-WHATSAPP_SERVICE_URL = "https://your-whatsapp-service.onrender.com"  # Change after deploying!
+WHATSAPP_SERVICE_URL = "https://whatsapp-service-hb7v.onrender.com"  # Change after deploying!
 
 BELT_ORDER = [
     'White', 'Yellow', 'Orange', 'Green', 'Blue',
