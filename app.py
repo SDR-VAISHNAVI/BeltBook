@@ -54,6 +54,36 @@ def notify_absent_students(absent_students, att_date):
         print(f"WhatsApp service error: {e}")
 
 
+@app.route('/api/send-absence-notifications', methods=['POST'], strict_slashes=False)
+def send_absence_notifications():
+    """Proxy: frontend → Flask → WhatsApp Node service (background, no browser popup)."""
+    data = request.get_json()
+    students = data.get('students', [])
+    att_date = data.get('date', str(date.today()))
+
+    if not students:
+        return jsonify({"success": True, "sent": 0, "failed": 0, "message": "No students to notify"})
+
+    try:
+        payload = {
+            "students": [
+                {"name": s["name"], "phone_number": s["phone_number"]}
+                for s in students
+                if s.get("phone_number")
+            ],
+            "date": att_date
+        }
+        resp = http_requests.post(
+            f"{WHATSAPP_SERVICE_URL}/send-absence",
+            json=payload,
+            timeout=30
+        )
+        result = resp.json()
+        return jsonify(result), resp.status_code
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 # ==============================
 # DOJOS
 # ==============================
