@@ -38,7 +38,7 @@ def notify_absent_students(absent_students, att_date):
     try:
         payload = {
             "students": [
-                {"name": s["name"], "phone_number": s["phone_number"]}
+                {"name": s["name"], "phone_number": str(s["phone_number"])}
                 for s in absent_students
                 if s.get("phone_number")
             ],
@@ -71,7 +71,7 @@ def send_absence_notifications():
     try:
         payload = {
             "students": [
-                {"name": s["name"], "phone_number": s["phone_number"]}
+                {"name": s["name"], "phone_number": str(s["phone_number"])}
                 for s in students
                 if s.get("phone_number")
             ],
