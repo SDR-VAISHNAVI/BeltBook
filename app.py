@@ -364,22 +364,7 @@ def mark_attendance():
             """, (r['student_id'], r['status'], att_date))
         conn.commit()
 
-        # Get absent students and notify
-        absent_ids = [r['student_id'] for r in records if r.get('status') == 'absent']
-        att_date = records[0].get('date') or date.today().isoformat()
-        if absent_ids:
-            cur2 = conn.cursor(cursor_factory=RealDictCursor)
-            cur2.execute("""
-                SELECT name, phone_number FROM students
-                WHERE id = ANY(%s) AND phone_number IS NOT NULL
-            """, (absent_ids,))
-            absent_students = cur2.fetchall()
-            cur2.close()
-            threading.Thread(
-                target=notify_absent_students,
-                args=(absent_students, att_date),
-                daemon=True
-            ).start()
+
 
         return jsonify({"success": True})
     except Exception as e:
