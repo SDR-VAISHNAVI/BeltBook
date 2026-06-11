@@ -311,6 +311,42 @@
       letter-spacing: 1px;
     }
 
+    /* ─── NOTIFY TOGGLE ──────────────────── */
+    .notify-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 11px 14px;
+      transition: opacity 0.2s, border-color 0.2s;
+    }
+    .notify-row.off { opacity: 0.42; }
+    .notify-row-info { flex: 1; min-width: 0; }
+    .notify-row-name { font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--white); }
+    .notify-row-phone { font-size: 11px; color: #6dcc96; margin-top: 1px; }
+    .notify-row-nophone { font-size: 11px; color: var(--muted); font-style: italic; margin-top: 1px; }
+    .wa-toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; cursor: pointer; }
+    .wa-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .wa-toggle-track {
+      position: absolute; inset: 0;
+      background: var(--border2);
+      border-radius: 11px;
+      transition: background 0.2s;
+    }
+    .wa-toggle input:checked ~ .wa-toggle-track { background: #25d366; }
+    .wa-toggle-thumb {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 16px; height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      pointer-events: none;
+    }
+    .wa-toggle input:checked ~ .wa-toggle-thumb { transform: translateX(16px); }
+
     /* ─── STATS ROW ──────────────────────── */
     .stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
     .stats-row.cols3 { grid-template-columns: repeat(3, 1fr); }
@@ -1250,14 +1286,15 @@
           <div class="absence-alert-sub" id="absenceAlertSub">Attendance saved successfully</div>
         </div>
       </div>
-      <div id="absenceStudentList"></div>
     </div>
     <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6;">
-      Tap each student below to open WhatsApp and send a personalised absence message to their parent.
+      Toggle off any students you don't want to notify, then tap <b style="color:var(--white);">Send Notifications</b>. Messages are sent in the background via WhatsApp.
     </p>
     <div id="absenceWaButtons" style="display:flex;flex-direction:column;gap:8px;margin-top:12px;"></div>
+    <div id="absenceSendStatus" style="display:none;margin-top:10px;font-size:12px;text-align:center;font-family:'Oswald',sans-serif;letter-spacing:1px;text-transform:uppercase;"></div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeAbsenceModal()">Done</button>
+      <button class="btn btn-ghost" onclick="closeAbsenceModal()">Close</button>
+      <button class="btn btn-whatsapp" id="absenceSendBtn" onclick="sendAbsenceNotifications()">📲 Send Notifications</button>
     </div>
   </div>
 </div>
@@ -1521,58 +1558,123 @@ async function submitAll() {
   }
 }
 
-// ── ABSENCE MODAL (WhatsApp) ─────────────────────────
+// ── ABSENCE MODAL (WhatsApp — background send) ───────
+let _absenceStudentsRef = [];
+let _absenceDateRef = '';
+
 function showAbsenceModal(absentStudents, date) {
+  _absenceStudentsRef = absentStudents;
+  _absenceDateRef = date;
+
   const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' });
 
-  const sub = document.getElementById('absenceAlertSub');
-  sub.textContent = `${absentStudents.length} student${absentStudents.length>1?'s':''} absent on ${dateLabel}`;
-
-  const listEl = document.getElementById('absenceStudentList');
-  listEl.innerHTML = absentStudents.map(s => `
-    <div class="absence-student-row">
-      <span style="font-size:14px;font-weight:600;color:var(--white);flex:1;">${esc(s.name)}</span>
-      ${s.phone
-        ? `<span style="font-size:11px;color:var(--muted);">${esc(s.phone)}</span>`
-        : `<span style="font-size:11px;color:var(--muted);font-style:italic;">No number</span>`
-      }
-    </div>`).join('');
+  document.getElementById('absenceAlertSub').textContent =
+    `${absentStudents.length} student${absentStudents.length>1?'s':''} absent on ${dateLabel}`;
 
   const btnsEl = document.getElementById('absenceWaButtons');
   btnsEl.innerHTML = '';
 
-  absentStudents.forEach(s => {
-    const msg = buildAbsenceMessage(s.name, dateLabel);
+  absentStudents.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'notify-row';
+    row.id = `nrow-${i}`;
+
     if (s.phone) {
-      const phone = s.phone.replace(/[^0-9]/g, '');
-      const encoded = encodeURIComponent(msg);
-      const btn = document.createElement('a');
-      btn.href = `https://wa.me/${phone}?text=${encoded}`;
-      btn.target = '_blank';
-      btn.rel = 'noopener';
-      btn.style.cssText = 'display:flex;align-items:center;gap:10px;background:#1a3a28;border:1px solid #25d366;border-radius:10px;padding:11px 14px;text-decoration:none;color:#fff;';
-      btn.innerHTML = `
-        <span style="font-size:20px;">💬</span>
-        <div style="flex:1;">
-          <div style="font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;">${esc(s.name)}</div>
-          <div style="font-size:11px;color:#6dcc96;margin-top:1px;">${esc(s.phone)}</div>
+      row.innerHTML = `
+        <span style="font-size:18px;">💬</span>
+        <div class="notify-row-info">
+          <div class="notify-row-name">${esc(s.name)}</div>
+          <div class="notify-row-phone">${esc(s.phone)}</div>
         </div>
-        <span style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1.5px;color:#25d366;text-transform:uppercase;">Send →</span>`;
-      btnsEl.appendChild(btn);
+        <label class="wa-toggle">
+          <input type="checkbox" checked onchange="toggleNotifyRow(${i}, this)">
+          <div class="wa-toggle-track"></div>
+          <div class="wa-toggle-thumb"></div>
+        </label>`;
     } else {
-      const div = document.createElement('div');
-      div.style.cssText = 'display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 14px;';
-      div.innerHTML = `
-        <span style="font-size:20px;">👤</span>
-        <div style="flex:1;">
-          <div style="font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;">${esc(s.name)}</div>
-          <div style="font-size:11px;color:var(--muted);">No phone number on file</div>
-        </div>`;
-      btnsEl.appendChild(div);
+      row.classList.add('off');
+      row.innerHTML = `
+        <span style="font-size:18px;">👤</span>
+        <div class="notify-row-info">
+          <div class="notify-row-name">${esc(s.name)}</div>
+          <div class="notify-row-nophone">No phone number on file</div>
+        </div>
+        <label class="wa-toggle" style="pointer-events:none;">
+          <input type="checkbox" disabled>
+          <div class="wa-toggle-track"></div>
+          <div class="wa-toggle-thumb"></div>
+        </label>`;
+    }
+    btnsEl.appendChild(row);
+  });
+
+  // Reset send status + button
+  const statusEl = document.getElementById('absenceSendStatus');
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  const sendBtn = document.getElementById('absenceSendBtn');
+  sendBtn.disabled = false;
+  sendBtn.innerHTML = '📲 Send Notifications';
+
+  document.getElementById('absenceModal').classList.add('open');
+}
+
+function toggleNotifyRow(i, checkbox) {
+  const row = document.getElementById('nrow-' + i);
+  if (checkbox.checked) row.classList.remove('off');
+  else row.classList.add('off');
+}
+
+async function sendAbsenceNotifications() {
+  const students = _absenceStudentsRef;
+  const date     = _absenceDateRef;
+
+  // Collect only toggled-on students with a phone number
+  const toSend = [];
+  students.forEach((s, i) => {
+    const row      = document.getElementById('nrow-' + i);
+    const checkbox = row ? row.querySelector('input[type="checkbox"]') : null;
+    if (checkbox && checkbox.checked && !checkbox.disabled && s.phone) {
+      toSend.push({ name: s.name, phone_number: s.phone });
     }
   });
 
-  document.getElementById('absenceModal').classList.add('open');
+  if (!toSend.length) {
+    toast('No students selected to notify', 'error');
+    return;
+  }
+
+  const sendBtn  = document.getElementById('absenceSendBtn');
+  const statusEl = document.getElementById('absenceSendStatus');
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '⏳ Sending…';
+  statusEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/send-absence-notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ students: toSend, date })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const sent   = data.sent   || 0;
+      const failed = data.failed || 0;
+      statusEl.style.display = 'block';
+      statusEl.style.color   = failed > 0 ? 'var(--gold)' : 'var(--green)';
+      statusEl.textContent   = `✅ ${sent} sent${failed > 0 ? ` · ⚠️ ${failed} failed` : ''}`;
+      sendBtn.innerHTML = '✅ Done';
+      toast(`Sent ${sent} absence alert${sent !== 1 ? 's' : ''}`, 'success');
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch (e) {
+    statusEl.style.display = 'block';
+    statusEl.style.color   = 'var(--red)';
+    statusEl.textContent   = '❌ ' + (e.message || 'Failed to send');
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = '📲 Send Notifications';
+  }
 }
 
 function buildAbsenceMessage(studentName, dateLabel) {
