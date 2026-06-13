@@ -6,7 +6,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import requests as http_requests
 import threading
-
+from flask import send_from_directory
+import os
 app = Flask(__name__)
 CORS(app)
 
@@ -21,6 +22,13 @@ BELT_ORDER = [
 MONTH_NAMES = ['','January','February','March','April','May','June',
                'July','August','September','October','November','December']
 
+@app.route('/static/service-worker.js')
+def service_worker():
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'service-worker.js',
+        mimetype='application/javascript'
+    )
 def get_conn():
     return psycopg2.connect(DATABASE_URL)
 
