@@ -7,6 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>Belt Book</title>
+  <link rel="manifest" href="/static/manifest.json"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png"/>
+<meta name="theme-color" content="#0d0d0d"/>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -2513,6 +2516,14 @@ function copyWaMessage() {
 
 document.getElementById('waModal').addEventListener('click', function(e) { if (e.target===this) closeWaModal(); });
 document.getElementById('absenceModal').addEventListener('click', function(e) { if (e.target===this) closeAbsenceModal(); });
+  // ── PWA Service Worker ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/static/service-worker.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW failed:', err));
+  });
+}
 </script>
 </body>
 </html>
