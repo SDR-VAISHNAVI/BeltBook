@@ -1,12 +1,12 @@
 {
-  "name": "BeltBook",
+  "name": "Belt Book",
   "short_name": "BeltBook",
   "description": "Dojo management — attendance, fees, belt tests",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0d0d0f",
-  "theme_color": "#0d0d0f",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d",
   "scope": "/",
   "lang": "en",
   "icons": [
@@ -23,6 +23,5 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
   "categories": ["business", "productivity"]
 }
